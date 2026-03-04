@@ -310,15 +310,7 @@ async function startServer() {
   const app = await createExpressApp();
   const PORT = 3000;
 
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
-    const { createServer: createViteServer } = await import("vite");
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
+  if (process.env.NODE_ENV === "production") {
     app.use(express.static(path.join(__dirname, "dist")));
     app.get("*", (req, res) => {
       res.sendFile(path.join(__dirname, "dist", "index.html"));
@@ -330,7 +322,7 @@ async function startServer() {
   });
 }
 
-// Only start the server if this file is run directly
-if (process.env.NODE_ENV !== "production" || !process.env.NETLIFY) {
+// Only start the server if this file is run directly and not on Netlify
+if (import.meta.url === `file://${process.argv[1]}` && !process.env.NETLIFY) {
   startServer();
 }
