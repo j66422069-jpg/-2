@@ -245,15 +245,17 @@ const AboutPage = ({ data }: { data: PortfolioData }) => {
         </div>
       </div>
 
-      <div className="p-8 glass rounded-2xl">
-        <h3 className="text-xs font-mono tracking-widest text-white/40 uppercase mb-8 flex items-center gap-2">
-          <Palette size={16} /> Strengths
-        </h3>
-        <ul className="space-y-4 text-white/80">
-          {data.about.strengths.split('\n').map((s, i) => (
-            <li key={i} className="font-medium italic font-serif text-lg">“{s}”</li>
-          ))}
-        </ul>
+      <div className="grid grid-cols-1 gap-8">
+        <div className="p-8 glass rounded-2xl">
+          <h3 className="text-xs font-mono tracking-widest text-white/40 uppercase mb-8 flex items-center gap-2">
+            <Palette size={16} /> Strengths
+          </h3>
+          <ul className="space-y-4 text-white/80">
+            {data.about.strengths.split('\n').map((s, i) => (
+              <li key={i} className="font-medium italic font-serif text-lg">“{s}”</li>
+            ))}
+          </ul>
+        </div>
       </div>
     </div>
   );
@@ -423,7 +425,7 @@ const ContactPage = ({ data }: { data: PortfolioData }) => {
     <div className="pt-32 px-6 max-w-7xl mx-auto pb-24 min-h-[90vh] flex flex-col justify-center">
       <h2 className="text-6xl md:text-8xl font-sans font-bold mb-16 tracking-tighter">CONTACT</h2>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-16">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
         <div className="space-y-4">
           <span className="text-xs font-mono tracking-widest text-white/40 uppercase block">Email</span>
           <div className="flex items-center gap-4 group">
@@ -464,23 +466,23 @@ const ContactPage = ({ data }: { data: PortfolioData }) => {
             </button>
           </div>
         </div>
-      </div>
 
-      {data.home.resume_url && data.home.resume_url !== '#' && (
-        <div className="pt-12 border-t border-white/5">
+        {data.home.resume_url && data.home.resume_url !== '#' && (
           <div className="space-y-4">
             <span className="text-xs font-mono tracking-widest text-white/40 uppercase block">Resume</span>
-            <a 
-              href={data.home.resume_url} 
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-8 py-4 bg-white text-dark font-medium rounded-full inline-flex items-center gap-2 hover:bg-white/90 transition-colors"
-            >
-              RESUME DOWNLOAD <Download size={18} />
-            </a>
+            <div>
+              <a 
+                href={data.home.resume_url} 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-6 py-3 bg-white text-dark text-sm font-medium rounded-full inline-flex items-center gap-2 hover:bg-white/90 transition-colors"
+              >
+                Resume Download <Download size={16} />
+              </a>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
@@ -741,14 +743,16 @@ const AdminPanel = ({ data, onUpdate }: { data: PortfolioData, onUpdate: () => v
               />
             </div>
           </div>
-          <div>
-            <label className="text-xs font-mono text-white/40 uppercase mb-2 block">Strengths (one per line)</label>
-            <textarea 
-              value={aboutForm.strengths} 
-              onChange={e => setAboutForm({...aboutForm, strengths: e.target.value})}
-              rows={3}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2"
-            />
+          <div className="grid grid-cols-1 gap-6">
+            <div>
+              <label className="text-xs font-mono text-white/40 uppercase mb-2 block">Strengths (one per line)</label>
+              <textarea 
+                value={aboutForm.strengths} 
+                onChange={e => setAboutForm({...aboutForm, strengths: e.target.value})}
+                rows={3}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2"
+              />
+            </div>
           </div>
           <button onClick={saveAbout} className="px-6 py-2 bg-white text-dark rounded-lg flex items-center gap-2">
             <Save size={16} /> Save Changes
@@ -964,21 +968,15 @@ export default function App() {
   const [selectedProject, setSelectedProject] = useState<ProjectData | null>(null);
   const [data, setData] = useState<PortfolioData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
   const fetchData = async () => {
     try {
-      setError(null);
       const res = await fetch('/api/portfolio');
-      if (!res.ok) {
-        throw new Error(`Failed to fetch portfolio data: ${res.status} ${res.statusText}`);
-      }
       const json = await res.json();
       setData(json);
     } catch (err) {
       console.error(err);
-      setError(err instanceof Error ? err.message : 'An unknown error occurred');
     } finally {
       setLoading(false);
     }
@@ -994,7 +992,7 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  if (loading) {
+  if (loading || !data) {
     return (
       <div className="h-screen flex items-center justify-center bg-dark">
         <motion.div 
@@ -1004,21 +1002,6 @@ export default function App() {
         >
           LOADING
         </motion.div>
-      </div>
-    );
-  }
-
-  if (error || !data) {
-    return (
-      <div className="h-screen flex flex-col items-center justify-center bg-dark p-6 text-center">
-        <div className="text-red-400 mb-4 font-mono text-xs uppercase tracking-widest">Error Loading Portfolio</div>
-        <div className="text-white/60 max-w-md mb-8 font-light">{error || 'Data not found'}</div>
-        <button 
-          onClick={fetchData}
-          className="px-6 py-3 border border-white/20 rounded-full text-xs font-mono tracking-widest hover:bg-white/5 transition-colors"
-        >
-          RETRY
-        </button>
       </div>
     );
   }
