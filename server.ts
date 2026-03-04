@@ -21,13 +21,36 @@ function getDb() {
     : path.join(process.cwd(), "portfolio.db");
 
   if (isNetlify && !fs.existsSync(dbPath)) {
-    const bundledDbPath = path.join(process.cwd(), "portfolio.db");
-    if (fs.existsSync(bundledDbPath)) {
-      fs.copyFileSync(bundledDbPath, dbPath);
+    const possiblePaths = [
+      path.join(process.cwd(), "portfolio.db"),
+      path.resolve(__dirname, "portfolio.db"),
+      path.resolve(__dirname, "..", "portfolio.db"),
+      path.resolve(__dirname, "../../portfolio.db"),
+      path.resolve(__dirname, "../../../portfolio.db"),
+      "/var/task/portfolio.db",
+    ];
+    
+    let found = false;
+    for (const p of possiblePaths) {
+      try {
+        if (fs.existsSync(p)) {
+          fs.copyFileSync(p, dbPath);
+          found = true;
+          break;
+        }
+      } catch (e) {
+        // Continue to next path
+      }
     }
   }
 
-  dbInstance = new Database(dbPath);
+  try {
+    dbInstance = new Database(dbPath);
+  } catch (err) {
+    console.error("Failed to open database at", dbPath, err);
+    // Fallback to in-memory if file fails, to avoid 502
+    dbInstance = new Database(":memory:");
+  }
 
   // Initialize Database
   dbInstance.exec(`
