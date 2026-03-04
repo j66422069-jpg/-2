@@ -1,5 +1,4 @@
 import express from "express";
-import Database from "better-sqlite3";
 import path from "path";
 import { fileURLToPath } from "url";
 import multer from "multer";
@@ -13,8 +12,10 @@ const isNetlify = !!process.env.NETLIFY;
 // Lazy-loaded database connection
 let dbInstance: any = null;
 
-function getDb() {
+async function getDb() {
   if (dbInstance) return dbInstance;
+
+  const { default: Database } = await import("better-sqlite3");
 
   const dbPath = isNetlify 
     ? path.join("/tmp", "portfolio.db") 
@@ -182,8 +183,8 @@ export async function createExpressApp() {
   // API Routes
   const apiRouter = express.Router();
 
-  apiRouter.get("/portfolio", (req, res) => {
-    const db = getDb();
+  apiRouter.get("/portfolio", async (req, res) => {
+    const db = await getDb();
     const home = db.prepare("SELECT * FROM home WHERE id = 1").get();
     const about = db.prepare("SELECT * FROM about WHERE id = 1").get();
     const projects = db.prepare("SELECT * FROM projects ORDER BY year DESC").all();
@@ -218,29 +219,29 @@ export async function createExpressApp() {
   });
 
   // Admin Update Routes
-  apiRouter.post("/admin/home", adminAuth, (req, res) => {
-    const db = getDb();
+  apiRouter.post("/admin/home", adminAuth, async (req, res) => {
+    const db = await getDb();
     const { name, job_title, intro, resume_url } = req.body;
     db.prepare("UPDATE home SET name = ?, job_title = ?, intro = ?, resume_url = ? WHERE id = 1").run(name, job_title, intro, resume_url);
     res.json({ success: true });
   });
 
-  apiRouter.post("/admin/about", adminAuth, (req, res) => {
-    const db = getDb();
+  apiRouter.post("/admin/about", adminAuth, async (req, res) => {
+    const db = await getDb();
     const { profile_image, bio, scope, career, workflow, strengths } = req.body;
     db.prepare("UPDATE about SET profile_image = ?, bio = ?, scope = ?, career = ?, workflow = ?, strengths = ? WHERE id = 1").run(profile_image, bio, scope, career, workflow, strengths);
     res.json({ success: true });
   });
 
-  apiRouter.post("/admin/contact", adminAuth, (req, res) => {
-    const db = getDb();
+  apiRouter.post("/admin/contact", adminAuth, async (req, res) => {
+    const db = await getDb();
     const { email, instagram, instagram_text, phone } = req.body;
     db.prepare("UPDATE contact SET email = ?, instagram = ?, instagram_text = ?, phone = ? WHERE id = 1").run(email, instagram, instagram_text, phone);
     res.json({ success: true });
   });
 
-  apiRouter.post("/admin/projects", adminAuth, (req, res) => {
-    const db = getDb();
+  apiRouter.post("/admin/projects", adminAuth, async (req, res) => {
+    const db = await getDb();
     const { id, title, year, category, role, summary, thumbnail, camera, lens, lighting, color, contribution, is_featured, videos } = req.body;
     
     if (id) {
@@ -278,14 +279,14 @@ export async function createExpressApp() {
     res.json({ success: true });
   });
 
-  apiRouter.delete("/admin/projects/:id", adminAuth, (req, res) => {
-    const db = getDb();
+  apiRouter.delete("/admin/projects/:id", adminAuth, async (req, res) => {
+    const db = await getDb();
     db.prepare("DELETE FROM projects WHERE id = ?").run(req.params.id);
     res.json({ success: true });
   });
 
-  apiRouter.post("/admin/equipment", adminAuth, (req, res) => {
-    const db = getDb();
+  apiRouter.post("/admin/equipment", adminAuth, async (req, res) => {
+    const db = await getDb();
     const { id, category, name, context } = req.body;
     if (id) {
       db.prepare("UPDATE equipment SET category = ?, name = ?, context = ? WHERE id = ?").run(category, name, context, id);
@@ -295,8 +296,8 @@ export async function createExpressApp() {
     res.json({ success: true });
   });
 
-  apiRouter.delete("/admin/equipment/:id", adminAuth, (req, res) => {
-    const db = getDb();
+  apiRouter.delete("/admin/equipment/:id", adminAuth, async (req, res) => {
+    const db = await getDb();
     db.prepare("DELETE FROM equipment WHERE id = ?").run(req.params.id);
     res.json({ success: true });
   });

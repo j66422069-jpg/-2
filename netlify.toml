@@ -4,8 +4,7 @@
 
 [functions]
   directory = "netlify/functions"
-  node_bundler = "esbuild"
-  external_node_modules = ["better-sqlite3", "lightningcss", "vite", "@tailwindcss/vite", "@vitejs/plugin-react"]
+  external_node_modules = ["better-sqlite3"]
   included_files = ["portfolio.db"]
 
 [build.environment]
@@ -15,7 +14,7 @@
 
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/api/:splat"
+  to = "/.netlify/functions/api"
   status = 200
 
 [[redirects]]
