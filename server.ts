@@ -1,5 +1,4 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import Database from "better-sqlite3";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -9,115 +8,143 @@ import fs from "fs";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir);
-}
+const isNetlify = !!process.env.NETLIFY;
 
-const dbPath = path.join(process.cwd(), "portfolio.db");
-const db = new Database(dbPath);
+// Lazy-loaded database connection
+let dbInstance: any = null;
 
-// Initialize Database
-db.exec(`
-  CREATE TABLE IF NOT EXISTS home (
-    id INTEGER PRIMARY KEY,
-    name TEXT,
-    job_title TEXT,
-    intro TEXT,
-    resume_url TEXT
-  );
+function getDb() {
+  if (dbInstance) return dbInstance;
 
-  CREATE TABLE IF NOT EXISTS about (
-    id INTEGER PRIMARY KEY,
-    profile_image TEXT,
-    bio TEXT,
-    scope TEXT,
-    career TEXT,
-    workflow TEXT,
-    strengths TEXT
-  );
+  const dbPath = isNetlify 
+    ? path.join("/tmp", "portfolio.db") 
+    : path.join(process.cwd(), "portfolio.db");
 
-  CREATE TABLE IF NOT EXISTS projects (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT,
-    year TEXT,
-    category TEXT,
-    role TEXT,
-    summary TEXT,
-    thumbnail TEXT,
-    camera TEXT,
-    lens TEXT,
-    lighting TEXT,
-    color TEXT,
-    contribution TEXT,
-    is_featured INTEGER DEFAULT 0
-  );
+  if (isNetlify && !fs.existsSync(dbPath)) {
+    const bundledDbPath = path.join(process.cwd(), "portfolio.db");
+    if (fs.existsSync(bundledDbPath)) {
+      fs.copyFileSync(bundledDbPath, dbPath);
+    }
+  }
 
-  CREATE TABLE IF NOT EXISTS project_videos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    project_id INTEGER,
-    title TEXT,
-    description TEXT,
-    youtube_url TEXT,
-    FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
-  );
+  dbInstance = new Database(dbPath);
 
-  CREATE TABLE IF NOT EXISTS equipment (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    category TEXT,
-    name TEXT,
-    context TEXT
-  );
+  // Initialize Database
+  dbInstance.exec(`
+    CREATE TABLE IF NOT EXISTS home (
+      id INTEGER PRIMARY KEY,
+      name TEXT,
+      job_title TEXT,
+      intro TEXT,
+      resume_url TEXT
+    );
 
-  CREATE TABLE IF NOT EXISTS contact (
-    id INTEGER PRIMARY KEY,
-    email TEXT,
-    instagram TEXT,
-    instagram_text TEXT,
-    phone TEXT
-  );
-`);
+    CREATE TABLE IF NOT EXISTS about (
+      id INTEGER PRIMARY KEY,
+      profile_image TEXT,
+      bio TEXT,
+      scope TEXT,
+      career TEXT,
+      workflow TEXT,
+      strengths TEXT
+    );
 
-// Migration: Add instagram_text if not exists
-try {
-  db.prepare("ALTER TABLE contact ADD COLUMN instagram_text TEXT").run();
-} catch (e) {
-  // Column already exists or table doesn't exist yet
-}
+    CREATE TABLE IF NOT EXISTS projects (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT,
+      year TEXT,
+      category TEXT,
+      role TEXT,
+      summary TEXT,
+      thumbnail TEXT,
+      camera TEXT,
+      lens TEXT,
+      lighting TEXT,
+      color TEXT,
+      contribution TEXT,
+      is_featured INTEGER DEFAULT 0
+    );
 
-// Seed initial data if empty
-const homeCount = db.prepare("SELECT COUNT(*) as count FROM home").get() as { count: number };
-if (homeCount.count === 0) {
-  db.prepare("INSERT INTO home (name, job_title, intro, resume_url) VALUES (?, ?, ?, ?)").run(
-    "KIM CINEMA",
-    "촬영감독 (Cinematographer)",
-    "감각적인 룩 설계와 효율적인 현장 운영을 지향하는 촬영감독 김시네마입니다.",
-    "#"
-  );
-  db.prepare("INSERT INTO about (bio, scope, career, workflow, strengths) VALUES (?, ?, ?, ?, ?)").run(
-    "빛과 그림자로 이야기를 만드는 촬영감독입니다.",
-    "프리프로덕션 콘셉트/룩 설계, 촬영, 조명 설계, 카메라 오퍼레이팅",
-    "2020-현재: 프리랜서 촬영감독\n2018-2020: XX 프로덕션 촬영팀",
-    "프리(레퍼런스/룩북) -> 촬영(현장 운영) -> 후반(색보정 협업)",
-    "현장 커뮤니케이션\n룩 설계\n제한된 조건에서의 최상의 결과물"
-  );
-  db.prepare("INSERT INTO contact (email, instagram, instagram_text, phone) VALUES (?, ?, ?, ?)").run(
-    "example@email.com",
-    "https://instagram.com/username",
-    "@kim_cinema",
-    "010-1234-5678"
-  );
+    CREATE TABLE IF NOT EXISTS project_videos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      project_id INTEGER,
+      title TEXT,
+      description TEXT,
+      youtube_url TEXT,
+      FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS equipment (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      category TEXT,
+      name TEXT,
+      context TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS contact (
+      id INTEGER PRIMARY KEY,
+      email TEXT,
+      instagram TEXT,
+      instagram_text TEXT,
+      phone TEXT
+    );
+  `);
+
+  // Migration: Add instagram_text if not exists
+  try {
+    dbInstance.prepare("ALTER TABLE contact ADD COLUMN instagram_text TEXT").run();
+  } catch (e) {
+    // Column already exists or table doesn't exist yet
+  }
+
+  // Seed initial data if empty
+  const homeCount = dbInstance.prepare("SELECT COUNT(*) as count FROM home").get() as { count: number };
+  if (homeCount.count === 0) {
+    dbInstance.prepare("INSERT INTO home (name, job_title, intro, resume_url) VALUES (?, ?, ?, ?)").run(
+      "KIM CINEMA",
+      "촬영감독 (Cinematographer)",
+      "감각적인 룩 설계와 효율적인 현장 운영을 지향하는 촬영감독 김시네마입니다.",
+      "#"
+    );
+    dbInstance.prepare("INSERT INTO about (bio, scope, career, workflow, strengths) VALUES (?, ?, ?, ?, ?)").run(
+      "빛과 그림자로 이야기를 만드는 촬영감독입니다.",
+      "프리프로덕션 콘셉트/룩 설계, 촬영, 조명 설계, 카메라 오퍼레이팅",
+      "2020-현재: 프리랜서 촬영감독\n2018-2020: XX 프로덕션 촬영팀",
+      "프리(레퍼런스/룩북) -> 촬영(현장 운영) -> 후반(색보정 협업)",
+      "현장 커뮤니케이션\n룩 설계\n제한된 조건에서의 최상의 결과물"
+    );
+    dbInstance.prepare("INSERT INTO contact (email, instagram, instagram_text, phone) VALUES (?, ?, ?, ?)").run(
+      "example@email.com",
+      "https://instagram.com/username",
+      "@kim_cinema",
+      "010-1234-5678"
+    );
+  }
+
+  return dbInstance;
 }
 
 export async function createExpressApp() {
   const app = express();
   app.use(express.json());
 
+  // Ensure uploads directory exists
+  const uploadsDir = isNetlify 
+    ? path.join("/tmp", "uploads") 
+    : path.join(__dirname, "uploads");
+  
+  try {
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+  } catch (e) {
+    console.warn("Failed to create uploads directory:", e);
+  }
+
   // Multer configuration
   const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-      cb(null, "uploads/");
+      cb(null, uploadsDir);
     },
     filename: (req, file, cb) => {
       const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
@@ -127,12 +154,13 @@ export async function createExpressApp() {
   const upload = multer({ storage });
 
   // Serve uploads statically
-  app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+  app.use("/uploads", express.static(uploadsDir));
 
   // API Routes
   const apiRouter = express.Router();
 
   apiRouter.get("/portfolio", (req, res) => {
+    const db = getDb();
     const home = db.prepare("SELECT * FROM home WHERE id = 1").get();
     const about = db.prepare("SELECT * FROM about WHERE id = 1").get();
     const projects = db.prepare("SELECT * FROM projects ORDER BY year DESC").all();
@@ -168,24 +196,28 @@ export async function createExpressApp() {
 
   // Admin Update Routes
   apiRouter.post("/admin/home", adminAuth, (req, res) => {
+    const db = getDb();
     const { name, job_title, intro, resume_url } = req.body;
     db.prepare("UPDATE home SET name = ?, job_title = ?, intro = ?, resume_url = ? WHERE id = 1").run(name, job_title, intro, resume_url);
     res.json({ success: true });
   });
 
   apiRouter.post("/admin/about", adminAuth, (req, res) => {
+    const db = getDb();
     const { profile_image, bio, scope, career, workflow, strengths } = req.body;
     db.prepare("UPDATE about SET profile_image = ?, bio = ?, scope = ?, career = ?, workflow = ?, strengths = ? WHERE id = 1").run(profile_image, bio, scope, career, workflow, strengths);
     res.json({ success: true });
   });
 
   apiRouter.post("/admin/contact", adminAuth, (req, res) => {
+    const db = getDb();
     const { email, instagram, instagram_text, phone } = req.body;
     db.prepare("UPDATE contact SET email = ?, instagram = ?, instagram_text = ?, phone = ? WHERE id = 1").run(email, instagram, instagram_text, phone);
     res.json({ success: true });
   });
 
   apiRouter.post("/admin/projects", adminAuth, (req, res) => {
+    const db = getDb();
     const { id, title, year, category, role, summary, thumbnail, camera, lens, lighting, color, contribution, is_featured, videos } = req.body;
     
     if (id) {
@@ -224,11 +256,13 @@ export async function createExpressApp() {
   });
 
   apiRouter.delete("/admin/projects/:id", adminAuth, (req, res) => {
+    const db = getDb();
     db.prepare("DELETE FROM projects WHERE id = ?").run(req.params.id);
     res.json({ success: true });
   });
 
   apiRouter.post("/admin/equipment", adminAuth, (req, res) => {
+    const db = getDb();
     const { id, category, name, context } = req.body;
     if (id) {
       db.prepare("UPDATE equipment SET category = ?, name = ?, context = ? WHERE id = ?").run(category, name, context, id);
@@ -239,6 +273,7 @@ export async function createExpressApp() {
   });
 
   apiRouter.delete("/admin/equipment/:id", adminAuth, (req, res) => {
+    const db = getDb();
     db.prepare("DELETE FROM equipment WHERE id = ?").run(req.params.id);
     res.json({ success: true });
   });
@@ -254,6 +289,7 @@ async function startServer() {
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",

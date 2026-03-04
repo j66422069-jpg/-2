@@ -5,8 +5,13 @@
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
-  external_node_modules = ["better-sqlite3"]
+  external_node_modules = ["better-sqlite3", "vite", "@tailwindcss/vite", "@vitejs/plugin-react"]
   included_files = ["portfolio.db"]
+
+[build.environment]
+  NODE_VERSION = "22"
+  NPM_FLAGS = "--force"
+  CI = "false"
 
 [[redirects]]
   from = "/api/*"
