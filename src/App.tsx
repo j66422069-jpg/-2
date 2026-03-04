@@ -992,15 +992,21 @@ export default function App() {
   const [selectedProject, setSelectedProject] = useState<ProjectData | null>(null);
   const [data, setData] = useState<PortfolioData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
   const fetchData = async () => {
     try {
+      setError(null);
       const res = await fetch('/api/portfolio');
+      if (!res.ok) {
+        throw new Error(`Failed to fetch portfolio data: ${res.status} ${res.statusText}`);
+      }
       const json = await res.json();
       setData(json);
     } catch (err) {
       console.error(err);
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
     } finally {
       setLoading(false);
     }
@@ -1016,7 +1022,7 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  if (loading || !data) {
+  if (loading) {
     return (
       <div className="h-screen flex items-center justify-center bg-dark">
         <motion.div 
@@ -1026,6 +1032,21 @@ export default function App() {
         >
           LOADING
         </motion.div>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-dark p-6 text-center">
+        <div className="text-red-400 mb-4 font-mono text-xs uppercase tracking-widest">Error Loading Portfolio</div>
+        <div className="text-white/60 max-w-md mb-8 font-light">{error || 'Data not found'}</div>
+        <button 
+          onClick={fetchData}
+          className="px-6 py-3 border border-white/20 rounded-full text-xs font-mono tracking-widest hover:bg-white/5 transition-colors"
+        >
+          RETRY
+        </button>
       </div>
     );
   }
