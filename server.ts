@@ -15,7 +15,8 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir);
 }
 
-const db = new Database("portfolio.db");
+const dbPath = path.join(process.cwd(), "portfolio.db");
+const db = new Database(dbPath);
 
 // Initialize Database
 db.exec(`
@@ -109,11 +110,9 @@ if (homeCount.count === 0) {
   );
 }
 
-async function startServer() {
+export async function createExpressApp() {
   const app = express();
   app.use(express.json());
-
-  const PORT = 3000;
 
   // Multer configuration
   const storage = multer.diskStorage({
@@ -131,7 +130,9 @@ async function startServer() {
   app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
   // API Routes
-  app.get("/api/portfolio", (req, res) => {
+  const apiRouter = express.Router();
+
+  apiRouter.get("/portfolio", (req, res) => {
     const home = db.prepare("SELECT * FROM home WHERE id = 1").get();
     const about = db.prepare("SELECT * FROM about WHERE id = 1").get();
     const projects = db.prepare("SELECT * FROM projects ORDER BY year DESC").all();
@@ -158,7 +159,7 @@ async function startServer() {
   };
 
   // File Upload Route
-  app.post("/api/admin/upload", adminAuth, upload.single("file"), (req, res) => {
+  apiRouter.post("/admin/upload", adminAuth, upload.single("file"), (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
     }
@@ -166,25 +167,25 @@ async function startServer() {
   });
 
   // Admin Update Routes
-  app.post("/api/admin/home", adminAuth, (req, res) => {
+  apiRouter.post("/admin/home", adminAuth, (req, res) => {
     const { name, job_title, intro, resume_url } = req.body;
     db.prepare("UPDATE home SET name = ?, job_title = ?, intro = ?, resume_url = ? WHERE id = 1").run(name, job_title, intro, resume_url);
     res.json({ success: true });
   });
 
-  app.post("/api/admin/about", adminAuth, (req, res) => {
+  apiRouter.post("/admin/about", adminAuth, (req, res) => {
     const { profile_image, bio, scope, career, workflow, strengths } = req.body;
     db.prepare("UPDATE about SET profile_image = ?, bio = ?, scope = ?, career = ?, workflow = ?, strengths = ? WHERE id = 1").run(profile_image, bio, scope, career, workflow, strengths);
     res.json({ success: true });
   });
 
-  app.post("/api/admin/contact", adminAuth, (req, res) => {
+  apiRouter.post("/admin/contact", adminAuth, (req, res) => {
     const { email, instagram, instagram_text, phone } = req.body;
     db.prepare("UPDATE contact SET email = ?, instagram = ?, instagram_text = ?, phone = ? WHERE id = 1").run(email, instagram, instagram_text, phone);
     res.json({ success: true });
   });
 
-  app.post("/api/admin/projects", adminAuth, (req, res) => {
+  apiRouter.post("/admin/projects", adminAuth, (req, res) => {
     const { id, title, year, category, role, summary, thumbnail, camera, lens, lighting, color, contribution, is_featured, videos } = req.body;
     
     if (id) {
@@ -222,12 +223,12 @@ async function startServer() {
     res.json({ success: true });
   });
 
-  app.delete("/api/admin/projects/:id", adminAuth, (req, res) => {
+  apiRouter.delete("/admin/projects/:id", adminAuth, (req, res) => {
     db.prepare("DELETE FROM projects WHERE id = ?").run(req.params.id);
     res.json({ success: true });
   });
 
-  app.post("/api/admin/equipment", adminAuth, (req, res) => {
+  apiRouter.post("/admin/equipment", adminAuth, (req, res) => {
     const { id, category, name, context } = req.body;
     if (id) {
       db.prepare("UPDATE equipment SET category = ?, name = ?, context = ? WHERE id = ?").run(category, name, context, id);
@@ -237,10 +238,19 @@ async function startServer() {
     res.json({ success: true });
   });
 
-  app.delete("/api/admin/equipment/:id", adminAuth, (req, res) => {
+  apiRouter.delete("/admin/equipment/:id", adminAuth, (req, res) => {
     db.prepare("DELETE FROM equipment WHERE id = ?").run(req.params.id);
     res.json({ success: true });
   });
+
+  app.use(["/api", "/.netlify/functions/api", "/"], apiRouter);
+
+  return app;
+}
+
+async function startServer() {
+  const app = await createExpressApp();
+  const PORT = 3000;
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
@@ -261,4 +271,7 @@ async function startServer() {
   });
 }
 
-startServer();
+// Only start the server if this file is run directly
+if (process.env.NODE_ENV !== "production" || !process.env.NETLIFY) {
+  startServer();
+}
