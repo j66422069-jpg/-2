@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Menu, X, Instagram, Mail, Phone, ExternalLink, 
   ChevronRight, ArrowRight, Download, Camera, 
-  Layers, Zap, Palette, Settings, Trash2, Plus, Save,
+  Layers, Palette, Settings, Trash2, Plus, Save,
   Copy, Check, Play, Upload
 } from 'lucide-react';
 import { PortfolioData, ProjectData, EquipmentData, ProjectVideo } from './types';
@@ -245,33 +245,15 @@ const AboutPage = ({ data }: { data: PortfolioData }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 p-8 glass rounded-2xl">
-          <h3 className="text-xs font-mono tracking-widest text-white/40 uppercase mb-8 flex items-center gap-2">
-            <Zap size={16} /> Workflow
-          </h3>
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-8">
-            {data.about.workflow.split('->').map((step, i, arr) => (
-              <React.Fragment key={i}>
-                <div className="flex-1">
-                  <span className="text-xs font-mono text-white/20 mb-2 block">0{i+1}</span>
-                  <p className="font-medium">{step.trim()}</p>
-                </div>
-                {i < arr.length - 1 && <ChevronRight className="hidden md:block text-white/20" />}
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
-        <div className="p-8 glass rounded-2xl">
-          <h3 className="text-xs font-mono tracking-widest text-white/40 uppercase mb-8 flex items-center gap-2">
-            <Palette size={16} /> Strengths
-          </h3>
-          <ul className="space-y-4 text-white/80">
-            {data.about.strengths.split('\n').map((s, i) => (
-              <li key={i} className="font-medium italic font-serif text-lg">“{s}”</li>
-            ))}
-          </ul>
-        </div>
+      <div className="p-8 glass rounded-2xl">
+        <h3 className="text-xs font-mono tracking-widest text-white/40 uppercase mb-8 flex items-center gap-2">
+          <Palette size={16} /> Strengths
+        </h3>
+        <ul className="space-y-4 text-white/80">
+          {data.about.strengths.split('\n').map((s, i) => (
+            <li key={i} className="font-medium italic font-serif text-lg">“{s}”</li>
+          ))}
+        </ul>
       </div>
     </div>
   );
@@ -759,24 +741,14 @@ const AdminPanel = ({ data, onUpdate }: { data: PortfolioData, onUpdate: () => v
               />
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="text-xs font-mono text-white/40 uppercase mb-2 block">Workflow (separate with -&gt;)</label>
-              <input 
-                value={aboutForm.workflow} 
-                onChange={e => setAboutForm({...aboutForm, workflow: e.target.value})}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-mono text-white/40 uppercase mb-2 block">Strengths (one per line)</label>
-              <textarea 
-                value={aboutForm.strengths} 
-                onChange={e => setAboutForm({...aboutForm, strengths: e.target.value})}
-                rows={3}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2"
-              />
-            </div>
+          <div>
+            <label className="text-xs font-mono text-white/40 uppercase mb-2 block">Strengths (one per line)</label>
+            <textarea 
+              value={aboutForm.strengths} 
+              onChange={e => setAboutForm({...aboutForm, strengths: e.target.value})}
+              rows={3}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2"
+            />
           </div>
           <button onClick={saveAbout} className="px-6 py-2 bg-white text-dark rounded-lg flex items-center gap-2">
             <Save size={16} /> Save Changes
